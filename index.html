@@ -132,6 +132,27 @@
       user-select: all;
     }
 
+    .emailform { display: flex; gap: 10px; margin-bottom: 8px; }
+    .emailform__input {
+      flex: 1; padding: 14px 16px; font-size: 15px;
+      border: 1px solid var(--line); border-radius: var(--radius);
+      outline: none; font-family: inherit; color: var(--text);
+    }
+    .emailform__input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,115,232,.12); }
+    .emailform__btn {
+      padding: 0 22px; font-size: 15px; font-weight: 500;
+      color: #fff; background: var(--blue); border: none;
+      border-radius: var(--radius); cursor: pointer; font-family: inherit;
+      transition: background .15s ease;
+    }
+    .emailform__btn:hover { background: #1666c9; }
+    .emailform__btn:disabled { opacity: .6; cursor: default; }
+    .emailform__hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+    .emailform__msg { margin: 0 0 36px 4px; font-size: 14px; min-height: 20px; }
+    .emailform__msg.ok { color: #188038; }
+    .emailform__msg.err { color: #d93025; }
+    @media (max-width: 480px) { .emailform { flex-direction: column; } }
+
     footer {
       flex-shrink: 0;
       color: var(--muted);
@@ -151,6 +172,15 @@
         <span class="url">spoo.me/sprintreview</span>
       </span>
     </header>
+
+    <p class="section-label">Laisse ton email</p>
+    <form id="emailForm" class="emailform" novalidate>
+      <input id="emailInput" class="emailform__input" type="email" required
+             placeholder="ton.email@exemple.fr" autocomplete="email" />
+      <input type="text" class="emailform__hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+      <button class="emailform__btn" type="submit">Envoyer</button>
+    </form>
+    <p id="emailMsg" class="emailform__msg" role="status" aria-live="polite"></p>
 
     <p class="section-label">Liens</p>
     <div class="cards">
@@ -225,5 +255,49 @@
   </div>
 
   <footer>Sprint Review · ProductBuilder-TAK</footer>
+
+  <script>
+    (function () {
+      // URL du Web App Google Apps Script (déploiement "exec")
+      var ENDPOINT = 'https://script.google.com/macros/s/AKfycby4ufGYfiNZLzDCF-BgV22BSdu_hBdTlFZFqLNNtLxA-kvs8Hq1OEp-KhDRZ7lqX60F/exec';
+
+      var form = document.getElementById('emailForm');
+      var input = document.getElementById('emailInput');
+      var hp = form.querySelector('.emailform__hp');
+      var btn = form.querySelector('.emailform__btn');
+      var msg = document.getElementById('emailMsg');
+
+      function show(text, cls) { msg.textContent = text; msg.className = 'emailform__msg ' + cls; }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (hp.value) return; // pot de miel : bot détecté
+        var email = input.value.trim();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          show('Entre une adresse email valide.', 'err');
+          return;
+        }
+        if (ENDPOINT.indexOf('__FORM_ENDPOINT__') === 0) {
+          show('Formulaire pas encore configuré.', 'err');
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Envoi…';
+        fetch(ENDPOINT, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: new URLSearchParams({ email: email })
+        }).then(function () {
+          form.reset();
+          btn.textContent = 'Envoyé ✓';
+          show('Merci ! Ton email a bien été enregistré.', 'ok');
+        }).catch(function () {
+          btn.disabled = false;
+          btn.textContent = 'Envoyer';
+          show('Oups, réessaie dans un instant.', 'err');
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
