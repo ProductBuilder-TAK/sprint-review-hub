@@ -153,6 +153,19 @@
     .emailform__msg.err { color: #d93025; }
     @media (max-width: 480px) { .emailform { flex-direction: column; } }
 
+    .teamresult { margin: 0 0 36px 0; }
+    .teamresult .msg { font-size: 14px; margin: 0 0 12px 4px; }
+    .teamresult .msg.ok { color: #188038; }
+    .teamresult .msg.err { color: #d93025; }
+    .teamresult a.gobtn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 22px; background: var(--blue); color: #fff;
+      text-decoration: none; border-radius: var(--radius);
+      font-weight: 500; font-size: 15px;
+    }
+    .teamresult a.gobtn:hover { background: #1666c9; }
+    .teamresult .lnk { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 0 4px; word-break: break-all; }
+
     footer {
       flex-shrink: 0;
       color: var(--muted);
@@ -173,17 +186,17 @@
       </span>
     </header>
 
-    <p class="section-label">Email de ton compte Lovable</p>
+    <p class="section-label">Accès à ton projet Lovable</p>
     <p style="font-size:13px; color:var(--muted); margin:-6px 0 14px 4px; line-height:1.4;">
-      Indique l'adresse avec laquelle ton compte <strong>Lovable</strong> a été créé — je te donnerai accès à un projet avec tokens illimités.
+      Saisis le <strong>nom de ton équipe</strong> pour récupérer le lien de ton projet <strong>Lovable</strong> (tokens illimités). Un lien par équipe.
     </p>
-    <form id="emailForm" class="emailform" novalidate>
-      <input id="emailInput" class="emailform__input" type="email" required
-             placeholder="ton.email@exemple.fr" autocomplete="email" />
+    <form id="teamForm" class="emailform" novalidate>
+      <input id="teamInput" class="emailform__input" type="text" required
+             placeholder="Nom de ton équipe" autocomplete="off" />
       <input type="text" class="emailform__hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
-      <button class="emailform__btn" type="submit">Envoyer</button>
+      <button class="emailform__btn" type="submit">Obtenir mon accès</button>
     </form>
-    <p id="emailMsg" class="emailform__msg" role="status" aria-live="polite"></p>
+    <div id="teamResult" class="teamresult" role="status" aria-live="polite"></div>
 
     <p class="section-label">Liens</p>
     <div class="cards">
@@ -266,43 +279,64 @@
   <script>
     (function () {
       // URL du Web App Google Apps Script (déploiement "exec")
-      var ENDPOINT = 'https://script.google.com/macros/s/AKfycby4ufGYfiNZLzDCF-BgV22BSdu_hBdTlFZFqLNNtLxA-kvs8Hq1OEp-KhDRZ7lqX60F/exec';
+      var ENDPOINT = 'https://script.google.com/macros/s/AKfycbxiPy_8Ynv9Pzr8o3uPwONdJlLBFqJT63VhYR9REdCH924LFgYofjPnVVPtN72XCkse/exec';
 
-      var form = document.getElementById('emailForm');
-      var input = document.getElementById('emailInput');
+      var form = document.getElementById('teamForm');
+      var input = document.getElementById('teamInput');
       var hp = form.querySelector('.emailform__hp');
       var btn = form.querySelector('.emailform__btn');
-      var msg = document.getElementById('emailMsg');
+      var result = document.getElementById('teamResult');
 
-      function show(text, cls) { msg.textContent = text; msg.className = 'emailform__msg ' + cls; }
+      function esc(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+      function msg(text, cls) { result.innerHTML = '<p class="msg ' + cls + '">' + esc(text) + '</p>'; }
 
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (hp.value) return; // pot de miel : bot détecté
-        var email = input.value.trim();
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          show('Entre une adresse email valide.', 'err');
-          return;
-        }
-        if (ENDPOINT.indexOf('__FORM_ENDPOINT__') === 0) {
-          show('Formulaire pas encore configuré.', 'err');
-          return;
-        }
+        var team = input.value.trim();
+        if (!team) { msg('Entre le nom de ton équipe.', 'err'); return; }
+
         btn.disabled = true;
-        btn.textContent = 'Envoi…';
-        fetch(ENDPOINT, {
-          method: 'POST',
-          mode: 'no-cors',
-          body: new URLSearchParams({ email: email })
-        }).then(function () {
-          form.reset();
-          btn.textContent = 'Envoyé ✓';
-          show('Merci ! Ton email a bien été enregistré.', 'ok');
-        }).catch(function () {
+        btn.textContent = 'Recherche…';
+
+        var cb = '__claim_' + Math.floor(Math.random() * 1e9);
+        var s = document.createElement('script');
+        var done = false;
+        var timer = setTimeout(function () {
+          if (!done) { finish(); msg('Oups, réessaie dans un instant.', 'err'); }
+        }, 12000);
+
+        function finish() {
+          done = true;
+          clearTimeout(timer);
           btn.disabled = false;
-          btn.textContent = 'Envoyer';
-          show('Oups, réessaie dans un instant.', 'err');
-        });
+          btn.textContent = 'Obtenir mon accès';
+          try { delete window[cb]; } catch (_) { window[cb] = undefined; }
+          if (s.parentNode) s.parentNode.removeChild(s);
+        }
+
+        window[cb] = function (res) {
+          finish();
+          if (res && res.status === 'ok') {
+            result.innerHTML =
+              '<p class="msg ok">' + (res.reused ? 'Voici à nouveau l\'accès de ton équipe :' : 'Accès attribué à ton équipe ✓') + '</p>' +
+              '<a class="gobtn" href="' + esc(res.link) + '" target="_blank" rel="noopener">Ouvrir mon projet Lovable ↗</a>' +
+              '<span class="lnk">' + esc(res.link) + '</span>';
+            form.style.display = 'none';
+          } else if (res && res.status === 'soldout') {
+            msg('Tous les accès ont déjà été attribués. Contacte l\'organisateur.', 'err');
+          } else {
+            msg(res && res.message ? res.message : 'Erreur, réessaie.', 'err');
+          }
+        };
+
+        s.src = ENDPOINT + '?callback=' + cb + '&team=' + encodeURIComponent(team) + '&_=' + Date.now();
+        s.onerror = function () { if (!done) { finish(); msg('Oups, réessaie dans un instant.', 'err'); } };
+        document.body.appendChild(s);
       });
     })();
   </script>
