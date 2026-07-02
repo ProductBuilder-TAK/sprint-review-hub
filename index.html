@@ -179,6 +179,16 @@
     }
     .granted__msg { font-size: 16px; font-weight: 500; color: #188038; margin: 0 0 18px; }
     @keyframes pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+    .teamresult .loading {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 14px; color: var(--muted); padding: 4px;
+    }
+    .spinner {
+      width: 18px; height: 18px; flex: none;
+      border: 2px solid #dadce0; border-top-color: var(--blue);
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     footer {
       flex-shrink: 0;
@@ -316,6 +326,7 @@
 
         btn.disabled = true;
         btn.textContent = 'Recherche…';
+        result.innerHTML = '<div class="loading"><span class="spinner"></span> Attribution de ton accès en cours…</div>';
 
         var cb = '__claim_' + Math.floor(Math.random() * 1e9);
         var s = document.createElement('script');
