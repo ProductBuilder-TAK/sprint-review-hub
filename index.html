@@ -12,7 +12,8 @@
       --line: #dadce0;
       --hover: #f8f9fa;
       --blue: #1a73e8;
-      --radius: 12px;
+      --radius: 14px;
+      --bg: #f5f6f8;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -20,7 +21,7 @@
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       color: var(--text);
-      background: #fff;
+      background: var(--bg);
       -webkit-font-smoothing: antialiased;
       display: flex;
       flex-direction: column;
@@ -53,7 +54,8 @@
       padding: 10px 18px;
       border: 1px solid var(--line);
       border-radius: 999px;
-      background: var(--hover);
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(60,64,67,.08);
     }
     .share .label { font-size: 12px; color: var(--muted); }
     .share .url { font-size: 16px; font-weight: 500; color: var(--blue); letter-spacing: .2px; }
@@ -78,12 +80,12 @@
       text-decoration: none;
       color: inherit;
       background: #fff;
-      transition: background .15s ease, box-shadow .15s ease, border-color .15s ease;
+      transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
     }
     .card:hover {
-      background: var(--hover);
-      box-shadow: 0 1px 3px rgba(60,64,67,.15);
+      box-shadow: 0 4px 14px rgba(60,64,67,.12);
       border-color: #c6cacd;
+      transform: translateY(-1px);
     }
     .icon {
       flex: none;
@@ -162,9 +164,21 @@
       padding: 14px 22px; background: var(--blue); color: #fff;
       text-decoration: none; border-radius: var(--radius);
       font-weight: 500; font-size: 15px;
+      transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
     }
-    .teamresult a.gobtn:hover { background: #1666c9; }
-    .teamresult .lnk { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 0 4px; word-break: break-all; }
+    .teamresult a.gobtn:hover { background: #1666c9; box-shadow: 0 4px 14px rgba(26,115,232,.28); transform: translateY(-1px); }
+    .granted {
+      border: 1px solid #cfe6d6; background: #f2faf5;
+      border-radius: var(--radius); padding: 24px; text-align: center;
+      animation: pop .25s ease-out;
+    }
+    .granted__check {
+      width: 46px; height: 46px; margin: 0 auto 14px; border-radius: 50%;
+      background: #34a853; color: #fff; display: grid; place-items: center;
+      font-size: 24px; font-weight: 700;
+    }
+    .granted__msg { font-size: 16px; font-weight: 500; color: #188038; margin: 0 0 18px; }
+    @keyframes pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
 
     footer {
       flex-shrink: 0;
@@ -323,9 +337,11 @@
           finish();
           if (res && res.status === 'ok') {
             result.innerHTML =
-              '<p class="msg ok">' + (res.reused ? 'Voici à nouveau l\'accès de ton équipe :' : 'Accès attribué à ton équipe ✓') + '</p>' +
-              '<a class="gobtn" href="' + esc(res.link) + '" target="_blank" rel="noopener">Ouvrir mon projet Lovable ↗</a>' +
-              '<span class="lnk">' + esc(res.link) + '</span>';
+              '<div class="granted">' +
+                '<div class="granted__check">✓</div>' +
+                '<p class="granted__msg">' + (res.reused ? 'Voici à nouveau l\'accès de ton équipe.' : 'Ton accès est prêt !') + '</p>' +
+                '<a class="gobtn" href="' + esc(res.link) + '" target="_blank" rel="noopener">Ouvrir mon projet Lovable ↗</a>' +
+              '</div>';
             form.style.display = 'none';
           } else if (res && res.status === 'soldout') {
             msg('Tous les accès ont déjà été attribués. Contacte l\'organisateur.', 'err');
