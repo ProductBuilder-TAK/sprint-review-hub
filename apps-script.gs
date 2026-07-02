@@ -16,7 +16,9 @@ function claimLink(team) {
     return { status: 'error', message: 'Nom d equipe manquant' };
   }
   var lock = LockService.getScriptLock();
-  lock.waitLock(15000);
+  if (!lock.tryLock(30000)) {
+    return { status: 'busy' };
+  }
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
     var last = sheet.getLastRow();

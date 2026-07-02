@@ -318,6 +318,62 @@
       }
       function msg(text, cls) { result.innerHTML = '<p class="msg ' + cls + '">' + esc(text) + '</p>'; }
 
+      function resetBtn() { btn.disabled = false; btn.textContent = 'Obtenir mon accès'; }
+
+      function handleResult(res) {
+        resetBtn();
+        if (res && res.status === 'ok') {
+          result.innerHTML =
+            '<div class="granted">' +
+              '<div class="granted__check">✓</div>' +
+              '<p class="granted__msg">' + (res.reused ? 'Voici à nouveau l\'accès de ton équipe.' : 'Ton accès est prêt !') + '</p>' +
+              '<a class="gobtn" href="' + esc(res.link) + '" target="_blank" rel="noopener">Ouvrir mon projet Lovable ↗</a>' +
+            '</div>';
+          form.style.display = 'none';
+        } else if (res && res.status === 'soldout') {
+          msg('Tous les accès ont déjà été attribués. Contacte l\'organisateur.', 'err');
+        } else {
+          msg(res && res.message ? res.message : 'Erreur, réessaie.', 'err');
+        }
+      }
+
+      // Un essai JSONP. En cas de "busy" (serveur saturé), de timeout ou d'erreur
+      // réseau, on relance automatiquement (retriesLeft) sans que l'utilisateur agisse.
+      function attempt(team, retriesLeft) {
+        var cb = '__claim_' + Math.floor(Math.random() * 1e9);
+        var s = document.createElement('script');
+        var settled = false;
+
+        var timer = setTimeout(function () {
+          if (!settled) { cleanup(); retryOrFail(); }
+        }, 35000);
+
+        function cleanup() {
+          settled = true;
+          clearTimeout(timer);
+          try { delete window[cb]; } catch (_) { window[cb] = undefined; }
+          if (s.parentNode) s.parentNode.removeChild(s);
+        }
+
+        function retryOrFail() {
+          if (retriesLeft > 0) {
+            setTimeout(function () { attempt(team, retriesLeft - 1); }, 800);
+          } else {
+            resetBtn();
+            msg('Oups, le serveur est occupé. Réessaie dans un instant.', 'err');
+          }
+        }
+
+        window[cb] = function (res) {
+          cleanup();
+          if (res && res.status === 'busy') { retryOrFail(); return; }
+          handleResult(res);
+        };
+        s.onerror = function () { if (!settled) { cleanup(); retryOrFail(); } };
+        s.src = ENDPOINT + '?callback=' + cb + '&team=' + encodeURIComponent(team) + '&_=' + Date.now();
+        document.body.appendChild(s);
+      }
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (hp.value) return; // pot de miel : bot détecté
@@ -328,42 +384,7 @@
         btn.textContent = 'Recherche…';
         result.innerHTML = '<div class="loading"><span class="spinner"></span> Attribution de ton accès en cours…</div>';
 
-        var cb = '__claim_' + Math.floor(Math.random() * 1e9);
-        var s = document.createElement('script');
-        var done = false;
-        var timer = setTimeout(function () {
-          if (!done) { finish(); msg('Oups, réessaie dans un instant.', 'err'); }
-        }, 12000);
-
-        function finish() {
-          done = true;
-          clearTimeout(timer);
-          btn.disabled = false;
-          btn.textContent = 'Obtenir mon accès';
-          try { delete window[cb]; } catch (_) { window[cb] = undefined; }
-          if (s.parentNode) s.parentNode.removeChild(s);
-        }
-
-        window[cb] = function (res) {
-          finish();
-          if (res && res.status === 'ok') {
-            result.innerHTML =
-              '<div class="granted">' +
-                '<div class="granted__check">✓</div>' +
-                '<p class="granted__msg">' + (res.reused ? 'Voici à nouveau l\'accès de ton équipe.' : 'Ton accès est prêt !') + '</p>' +
-                '<a class="gobtn" href="' + esc(res.link) + '" target="_blank" rel="noopener">Ouvrir mon projet Lovable ↗</a>' +
-              '</div>';
-            form.style.display = 'none';
-          } else if (res && res.status === 'soldout') {
-            msg('Tous les accès ont déjà été attribués. Contacte l\'organisateur.', 'err');
-          } else {
-            msg(res && res.message ? res.message : 'Erreur, réessaie.', 'err');
-          }
-        };
-
-        s.src = ENDPOINT + '?callback=' + cb + '&team=' + encodeURIComponent(team) + '&_=' + Date.now();
-        s.onerror = function () { if (!done) { finish(); msg('Oups, réessaie dans un instant.', 'err'); } };
-        document.body.appendChild(s);
+        attempt(team, 2); // 1 essai + 2 relances automatiques
       });
     })();
   </script>
